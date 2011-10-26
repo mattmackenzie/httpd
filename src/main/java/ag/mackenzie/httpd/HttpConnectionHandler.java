@@ -100,23 +100,21 @@ public class HttpConnectionHandler extends Thread {
 			return;
 		}
 		
-		if (method.equalsIgnoreCase("GET")) {
-			HTTPRequest request = new HTTPRequest(path, headerProperties);
-			HTTPResponse response = new HTTPResponse(output);
+		HTTPRequest request = new HTTPRequest(path, headerProperties);
+		HTTPResponse response = new HTTPResponse(output);
+		if (method.equalsIgnoreCase("GET")) {		
 			handleHttpGet(request, response);
 		}
 		else {
-			handleUnsupported(method);
+			handleUnsupported(method, response);
 		}
 	}
 
-	private void handleUnsupported(String method) {
+	private void handleUnsupported(String method, HTTPResponse response) {
 		HTTPException httpEx = new HTTPException(HTTPResponseCode.UNIMPLEMENTED, method + " is not implemented.");
-
-		String headers = getResponseHeaders(httpEx.getResponseCode(), httpEx.getMessage().length(), "text/html");
 		try {
-			output.writeBytes(headers + httpEx.getMessage());
-			socket.close();
+			response.writeHeaders(httpEx.getResponseCode(), httpEx.toString().length(), "text/html");
+			response.writeString(httpEx.getMessage());
 			socketKiller.cancel();
 		} catch (IOException exception) {
 			logger.info("Failed to send 501. " + exception.getMessage());
@@ -129,6 +127,7 @@ public class HttpConnectionHandler extends Thread {
 		try {
 			response.writeHeaders(httpEx.getResponseCode(), httpEx.toString().length(), "text/html");
 			response.writeString(httpEx.getMessage());
+			socketKiller.cancel();
 		} catch (IOException e) {
 			logger.severe("Error sending 404: " + e.getMessage());
 		}
@@ -176,15 +175,6 @@ public class HttpConnectionHandler extends Thread {
 		else {
 			handleFileNotFound(path, response);
 		}
-	}
-
-	private String getResponseHeaders(HTTPResponseCode code, long contentLength, String contentType) {
-		// I am assuming I always am dealing in HTTP 1.1 and keep-alive...
-		StringBuilder headers = new StringBuilder();
-		headers.append(code.toString()).append("\r\n");
-		headers.append("Content-Type: " + contentType + "\r\n").append("Content-Length: " + contentLength + "\r\n");
-		headers.append("Connection: keep-alive\r\n").append("Keep-Alive: timeout=20\r\n").append("Server: MattServe2011\r\n\r\n");
-		return headers.toString();
 	}
 	
 	private String guessMimeType(String path) {

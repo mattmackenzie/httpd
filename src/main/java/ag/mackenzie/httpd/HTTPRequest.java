@@ -18,6 +18,10 @@ public class HTTPRequest {
 		return this.headers.get(name);
 	}
 	
+	public HashMap<String, String> getHeaders() {
+		return this.headers;
+	}
+	
 	public String getPath() {
 		if (this.path.contains("?")) {
 			return this.path.split("\\?")[0];

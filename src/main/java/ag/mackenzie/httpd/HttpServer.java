@@ -11,7 +11,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
  
-public class HttpServer {
+public class HttpServer extends Thread {
 	private int maxThreads = 10;
 	private int initialThreads = 2;
 	private long threadKeepalive = 60;
@@ -22,11 +22,12 @@ public class HttpServer {
     				initialThreads, maxThreads,threadKeepalive, 
     				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
 	private ServerSocket serverSocket = null;
+	private boolean running;
 	
 	
 	public HttpServer() {
 		initializeWebroot(webroot);
-		serve();
+		
 	}
 	
 	public HttpServer(int port, String webroot, int initialThreads, int maxThreads, int threadKeepalive) {
@@ -36,6 +37,10 @@ public class HttpServer {
 		this.maxThreads = maxThreads;
 		this.threadKeepalive = threadKeepalive;
 		initializeWebroot(webroot);
+		
+	}
+	
+	public void run() {
 		serve();
 	}
 	
@@ -56,6 +61,7 @@ public class HttpServer {
 		}
 	}
     public void serve()  {
+    	
         try {
             serverSocket = new ServerSocket(this.port);
         } catch (IOException e) {
@@ -65,9 +71,9 @@ public class HttpServer {
         }
         logger.info("Now accepting connections on port " + this.port + " and serving files from " + webroot + ".");
  
+        running = true;
         
-        
-        while (true) {
+        while (running) {
         	try {
 				pool.execute(new HttpConnectionHandler(serverSocket.accept(), webroot, logger));
 			} catch (IOException e) {
@@ -78,7 +84,12 @@ public class HttpServer {
         
     }
     
+    public void stopServer() {
+    	running = false;
+    }
+    
     public static void main(String[] argv) {
-    	new HttpServer();
+    	HttpServer server = new HttpServer();
+    	server.start();
     }
 }

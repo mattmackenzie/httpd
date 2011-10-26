@@ -17,7 +17,7 @@ public class HttpServer {
 	private long threadKeepalive = 60;
 	public int port = 8900;
 	public String webroot = System.getProperty("user.dir") + "/htdocs";
-	private Logger logger = Logger.getLogger("ag.mackenzie.httpd");	
+	public static Logger logger = Logger.getLogger("ag.mackenzie.httpd");	
     private ThreadPoolExecutor pool = new ThreadPoolExecutor(
     				initialThreads, maxThreads,threadKeepalive, 
     				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());

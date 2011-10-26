@@ -3,13 +3,11 @@ package ag.mackenzie.httpd;
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.io.UnsupportedEncodingException;
 import java.net.Socket;
-import java.net.URLDecoder;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -67,6 +65,7 @@ public class HttpConnectionHandler extends Thread {
 	}
 	private void handleRequest() {
 		LinkedList<String> headers = new LinkedList<String>();
+		HashMap<String,String> headerProperties = new HashMap<String, String>();
 		String line;
 		String method;
 		String path;
@@ -82,13 +81,19 @@ public class HttpConnectionHandler extends Thread {
 				}
 			}
 		} catch (IOException exception) {
-			logger.severe(exception.getMessage());
+			// almost always seems to be normal socket closure.
 		}
 		
 		if (headers != null && headers.size() > 0) {
 			String[] directive = headers.get(0).split(" ");
 			method = directive[0];
 			path = directive[1];
+			for (int i = 1; i < headers.size(); i++) {
+				String[] h = headers.get(i).split(" ");
+				String name = h[0].substring(0, h[0].length()-1);
+				String value = h[1];
+				headerProperties.put(name, value);
+			}
 		}
 		else {
 			logger.fine("Strange, the headers are null or 0 length. Returning.");
@@ -96,7 +101,9 @@ public class HttpConnectionHandler extends Thread {
 		}
 		
 		if (method.equalsIgnoreCase("GET")) {
-			handleHttpGet(headers, path);
+			HTTPRequest request = new HTTPRequest(path, headerProperties);
+			HTTPResponse response = new HTTPResponse(output);
+			handleHttpGet(request, response);
 		}
 		else {
 			handleUnsupported(method);
@@ -116,22 +123,21 @@ public class HttpConnectionHandler extends Thread {
 		}
 	}
 	
-	private void handleFileNotFound(String path) {
+	private void handleFileNotFound(String path, HTTPResponse response) {
 		HTTPException httpEx = new HTTPException(HTTPResponseCode.FILE_NOT_FOUND, path + " was not found on this server.");
 		
-		String headers = getResponseHeaders(httpEx.getResponseCode(), httpEx.toString().length(), "text/html");
 		try {
-			output.writeBytes(headers + httpEx.getMessage());
-			socket.close();
-			socketKiller.cancel();
-		} catch (IOException exception) {
-			logger.info("Failed to send 404. " + exception.getMessage());
+			response.writeHeaders(httpEx.getResponseCode(), httpEx.toString().length(), "text/html");
+			response.writeString(httpEx.getMessage());
+		} catch (IOException e) {
+			logger.severe("Error sending 404: " + e.getMessage());
 		}
+		
 	}
-	private void handleHttpGet(LinkedList<String> headers, String path) {
+	private void handleHttpGet(HTTPRequest request, HTTPResponse response) {
 		
 		// handle default path.
-		
+		String path = request.getPath();
 		if (path.endsWith("/")) {
 			path = path + "index.html";
 		}
@@ -140,63 +146,36 @@ public class HttpConnectionHandler extends Thread {
 		long contentLength = 0L;
 		String contentType = guessMimeType(path);
 		
-		if (path.startsWith("/echo.svc")) {
-			// special echo service
-			handleEcho(path);
+		if (path.startsWith("/services/")) {
+			try {
+				logger.info("Attempting to invoke service handler for: " + path);
+				Service svc = ServiceManager.resolveService(path);
+				svc.process(request, response);
+			} catch (ServiceException e) {
+				logger.severe(e.getMessage());
+			}
 			return;
 		}
 		
 		if (requestedFile.exists() && requestedFile.canRead()) {
 			logger.info("Thread " + getId() + " Serving " + path);
 			contentLength = requestedFile.length();
-			try {		
-				output.writeBytes(getResponseHeaders(HTTPResponseCode.OK, contentLength, contentType));
-				InputStream requestedInStream = new FileInputStream(requestedFile);
-				while (true) {
-					int b = requestedInStream.read();
-					if (b == -1) {
-						output.flush();
-						break;
-					}
-					output.write(b);
-				}
-				requestedInStream.close();
-				
-			} catch (IOException exception) {
-				logger.throwing(HttpConnectionHandler.class.getName(), "handleRequest/handleHttpGet", exception);
+			try {
+				response.writeHeaders(HTTPResponseCode.OK, contentLength, contentType);
+			} catch (IOException e) {
+				logger.severe("Writing headers: " + e.getMessage());
+			}
+			try {
+				response.writeFile(requestedFile);
+			} catch (FileNotFoundException e) {
+				logger.severe("File not found: " + e.getMessage());
+			} catch (IOException e) {
+				logger.severe("Problem writing file content: " + e.getMessage());
 			}
 		}
 		else {
-			handleFileNotFound(path);
+			handleFileNotFound(path, response);
 		}
-	}
-
-	private void handleEcho(String path) {
-		logger.info("Invoking echo service.");
-		String[] urlParts = path.split("\\?");
-	    if (urlParts.length > 1) {
-	        String query = urlParts[1];
-	        for (String param : query.split("&")) {
-	            String pair[] = param.split("=");
-	            String key = "";
-	            String value = "";
-				try {
-					key = URLDecoder.decode(pair[0], "UTF-8");
-					value = URLDecoder.decode(pair[1], "UTF-8");
-				} catch (UnsupportedEncodingException e) {
-					logger.throwing(getName(), "echo", e);
-				}
-	            
-	            if (key.equalsIgnoreCase("echo")) {
-	            	try {
-						output.writeBytes(getResponseHeaders(HTTPResponseCode.OK, value.length(), "text/html"));
-						output.writeBytes(value);
-					} catch (IOException e) {
-						logger.throwing(getName(), "echo", e);
-					}
-	            }
-	        }
-	    }
 	}
 
 	private String getResponseHeaders(HTTPResponseCode code, long contentLength, String contentType) {

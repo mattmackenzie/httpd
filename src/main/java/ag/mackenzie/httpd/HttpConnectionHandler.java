@@ -21,11 +21,16 @@ public class HttpConnectionHandler extends Thread {
 	private BufferedReader input;
 	private DataOutputStream output;
 	private Timer socketKiller;
-	
+	private ServiceManager serviceManager;  
 	public HttpConnectionHandler(Socket socket, String webRoot, Logger logger) {
 		this.socket = socket;
 		this.webRoot = webRoot;
 		this.logger = logger;
+		try {
+			this.serviceManager = ServiceManager.getInstance("ag.mackenzie.httpd.services");
+		} catch (ServiceException e) {
+			logger.severe("Could not initialize the service manager");
+		}
 	}
 	
 	/* (non-Javadoc)
@@ -100,10 +105,18 @@ public class HttpConnectionHandler extends Thread {
 			return;
 		}
 		
-		HTTPRequest request = new HTTPRequest(path, headerProperties);
+		HTTPRequest request = new HTTPRequest(path, webRoot, headerProperties);
 		HTTPResponse response = new HTTPResponse(output);
 		if (method.equalsIgnoreCase("GET")) {		
-			handleHttpGet(request, response);
+			//handleHttpGet(request, response);
+			try {
+				
+				Service genericService = serviceManager.resolveService(path);
+				logger.info("Thread " + getId() + " Serving " + path);
+				genericService.process(request, response);
+			} catch (ServiceException e) {
+				logger.severe(e.getMessage());
+			}
 		}
 		else {
 			handleUnsupported(method, response);
@@ -121,70 +134,4 @@ public class HttpConnectionHandler extends Thread {
 		}
 	}
 	
-	private void handleFileNotFound(String path, HTTPResponse response) {
-		HTTPException httpEx = new HTTPException(HTTPResponseCode.FILE_NOT_FOUND, path + " was not found on this server.");
-		
-		try {
-			response.writeHeaders(httpEx.getResponseCode(), httpEx.toString().length(), "text/html");
-			response.writeString(httpEx.getMessage());
-			socketKiller.cancel();
-		} catch (IOException e) {
-			logger.severe("Error sending 404: " + e.getMessage());
-		}
-		
-	}
-	private void handleHttpGet(HTTPRequest request, HTTPResponse response) {
-		
-		// handle default path.
-		String path = request.getPath();
-		if (path.endsWith("/")) {
-			path = path + "index.html";
-		}
-		
-		File requestedFile = new File(webRoot + path);
-		long contentLength = 0L;
-		String contentType = guessMimeType(path);
-		
-		if (path.startsWith("/services/")) {
-			try {
-				logger.info("Attempting to invoke service handler for: " + path);
-				Service svc = ServiceManager.resolveService(path);
-				svc.process(request, response);
-			} catch (ServiceException e) {
-				logger.severe(e.getMessage());
-			}
-			return;
-		}
-		
-		if (requestedFile.exists() && requestedFile.canRead()) {
-			logger.info("Thread " + getId() + " Serving " + path);
-			contentLength = requestedFile.length();
-			try {
-				response.writeHeaders(HTTPResponseCode.OK, contentLength, contentType);
-			} catch (IOException e) {
-				logger.severe("Writing headers: " + e.getMessage());
-			}
-			try {
-				response.writeFile(requestedFile);
-			} catch (FileNotFoundException e) {
-				logger.severe("File not found: " + e.getMessage());
-			} catch (IOException e) {
-				logger.severe("Problem writing file content: " + e.getMessage());
-			}
-		}
-		else {
-			handleFileNotFound(path, response);
-		}
-	}
-	
-	private String guessMimeType(String path) {
-		String contentType = "application/octet-stream";
-		if (path.endsWith(".js")) contentType = "text/javascript";
-		else if (path.endsWith(".css")) contentType = "text/css";
-		else if (path.endsWith(".jpg")) contentType = "image/jpeg";
-		else if (path.endsWith(".gif")) contentType = "image/gif";
-		else if (path.endsWith(".png")) contentType = "image/png";
-		else if (path.endsWith(".html") || path.endsWith(".html")) contentType = "text/html";
-		return contentType;
-	}
 }

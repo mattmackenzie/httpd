@@ -8,10 +8,12 @@ public class HTTPRequest {
 	
 	private String path;
 	private HashMap<String, String> headers;
+	private String webroot;
 
-	public HTTPRequest(String path, HashMap<String, String> headers) {
+	public HTTPRequest(String path, String webroot, HashMap<String, String> headers) {
 		this.path = path;
 		this.headers = headers;
+		this.webroot = webroot;
 	}
 	
 	public String getHeader(String name) {
@@ -27,6 +29,10 @@ public class HTTPRequest {
 			return this.path.split("\\?")[0];
 		}
 		return this.path;
+	}
+	
+	public String getPathTranslated() {
+		return this.webroot + this.path;
 	}
 	
 	public HashMap<String, String> getURLParameters() {

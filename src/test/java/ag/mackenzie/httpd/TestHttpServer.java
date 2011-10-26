@@ -26,7 +26,7 @@ public class TestHttpServer extends TestCase {
 	public void testEcho() {
 		String toEcho = Long.toString(System.currentTimeMillis());
 		try {
-			URL url = new URL("http://localhost:8900/services/echo?echo=" + toEcho);
+			URL url = new URL("http://localhost:8900/sys/services/EchoService?echo=" + toEcho);
 			HttpURLConnection connection = (HttpURLConnection)url.openConnection();
 			connection.setRequestMethod("GET");
 			InputStream stream = connection.getInputStream();

@@ -1,9 +1,9 @@
 package ag.mackenzie.httpd;
 
 import java.io.BufferedReader;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -19,7 +19,7 @@ public class HttpConnectionHandler extends Thread {
 	private String webRoot;
 	private Logger logger;
 	private BufferedReader input;
-	private DataOutputStream output;
+	private OutputStream output;
 	private Timer socketKiller;
 	public HttpConnectionHandler(Socket socket, String webRoot, Logger logger) {
 		this.socket = socket;
@@ -42,7 +42,8 @@ public class HttpConnectionHandler extends Thread {
 		}
 		
 		try {
-			output = new DataOutputStream(socket.getOutputStream());
+			output = socket.getOutputStream();
+			//output = new DataOutputStream(socket.getOutputStream());
 		} catch (IOException exception) {
 			logger.throwing(HttpConnectionHandler.class.getName(), "run", exception);
 			return;

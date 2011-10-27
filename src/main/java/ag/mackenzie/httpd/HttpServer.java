@@ -4,23 +4,17 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.net.ServerSocket;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
  
 public class HttpServer extends Thread {
-	private int maxThreads = 10;
-	private int initialThreads = 2;
-	private long threadKeepalive = 60;
 	public int port = 8900;
 	public String webroot = System.getProperty("user.dir") + "/htdocs";
 	public static Logger logger = Logger.getLogger("ag.mackenzie.httpd");	
-    private ThreadPoolExecutor pool = new ThreadPoolExecutor(
-    				initialThreads, maxThreads,threadKeepalive, 
-    				TimeUnit.SECONDS, new LinkedBlockingQueue<Runnable>());
+    private ExecutorService pool = Executors.newCachedThreadPool();
 	private ServerSocket serverSocket = null;
 	private boolean running;
 	
@@ -30,12 +24,9 @@ public class HttpServer extends Thread {
 		
 	}
 	
-	public HttpServer(int port, String webroot, int initialThreads, int maxThreads, int threadKeepalive) {
+	public HttpServer(int port, String webroot) {
 		this.port = port;
 		this.webroot = webroot;
-		this.initialThreads = initialThreads;
-		this.maxThreads = maxThreads;
-		this.threadKeepalive = threadKeepalive;
 		initializeWebroot(webroot);
 		
 	}

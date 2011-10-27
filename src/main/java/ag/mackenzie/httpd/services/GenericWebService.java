@@ -31,7 +31,8 @@ public class GenericWebService implements Service{
 		if (path.startsWith("/services/")) {
 			try {
 				logger.info("Attempting to invoke service handler for: " + path);
-				Service svc = ServiceManager.resolveService(path);
+				ServiceManager serviceManager = ServiceManager.getInstance("ag.mackenzie.httpd.services");
+				Service svc = serviceManager.resolveService(path);
 				svc.process(request, response);
 			} catch (ServiceException e) {
 				logger.severe(e.getMessage());

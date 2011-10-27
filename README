@@ -1,0 +1,10 @@
+This project is built with Maven, so:
+
+'mvn package' will build you a jar in target/ that you can run with 'java -jar httpd-1.0-SNAPSHOT.jar'.  Files are served from
+./htdocs, and if you don't have such a directory, the server will create it.
+
+The server also exposes some services:
+
+/sys/services/EchoService?echo=Hello+World
+/sys/services/RickService
+/sys/services/HeaderEchoService

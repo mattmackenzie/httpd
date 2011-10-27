@@ -20,15 +20,8 @@ public class GenericWebService implements Service{
 		
 		// handle default path.
 		String path = request.getPath();
-		if (path.endsWith("/")) {
-			path = request.getPathTranslated() + "index.html";
-		}
 		
-		File requestedFile = new File(path);
-		long contentLength = 0L;
-		String contentType = guessMimeType(path);
-		
-		if (path.startsWith("/services/")) {
+		if (path.startsWith("/sys/services")) {
 			try {
 				logger.info("Attempting to invoke service handler for: " + path);
 				ServiceManager serviceManager = ServiceManager.getInstance("ag.mackenzie.httpd.services");
@@ -39,11 +32,18 @@ public class GenericWebService implements Service{
 			}
 			return;
 		}
-		
+		else {
+			if (path.endsWith("/")) {
+				path = request.getPathTranslated() + "index.html";
+			}
+		}
+		File requestedFile = new File(path);
+		long contentLength = 0L;
+		String contentType = guessMimeType(path);
 		if (requestedFile.exists() && requestedFile.canRead()) {
 			contentLength = requestedFile.length();
 			try {
-				response.writeHeaders(HTTPResponseCode.OK, contentLength, contentType);
+				response.writeHeaders(HTTPResponseCode.OK, contentLength, contentType, true);
 			} catch (IOException e) {
 				logger.severe("Writing headers: " + e.getMessage());
 			}
@@ -62,9 +62,8 @@ public class GenericWebService implements Service{
 
 	private void handleFileNotFound(String path, HTTPResponse response) {
 		HTTPException httpEx = new HTTPException(HTTPResponseCode.FILE_NOT_FOUND, path + " was not found on this server.");
-		
 		try {
-			response.writeHeaders(httpEx.getResponseCode(), httpEx.toString().length(), "text/html");
+			response.writeHeaders(httpEx.getResponseCode(), httpEx.getMessage().length(), "text/html", false);
 			response.writeString(httpEx.getMessage());
 		} catch (IOException e) {
 			logger.severe("Error sending 404: " + e.getMessage());

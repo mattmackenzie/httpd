@@ -15,7 +15,7 @@ public class EchoService implements Service {
 			toEcho = "null";
 		}
 		try {
-			response.writeHeaders(HTTPResponseCode.OK, toEcho.length(), "text/plain");
+			response.writeHeaders(HTTPResponseCode.OK, toEcho.length(), "text/plain", false);
 			response.writeString(toEcho);
 		} catch (IOException e) {
 			throw new ServiceException(e);

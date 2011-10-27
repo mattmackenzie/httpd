@@ -2,8 +2,6 @@ package ag.mackenzie.httpd;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.Socket;
@@ -13,6 +11,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.logging.Logger;
 
+import ag.mackenzie.httpd.services.GenericWebService;
+
 public class HttpConnectionHandler extends Thread {
 
 	private Socket socket;
@@ -21,16 +21,10 @@ public class HttpConnectionHandler extends Thread {
 	private BufferedReader input;
 	private DataOutputStream output;
 	private Timer socketKiller;
-	private ServiceManager serviceManager;  
 	public HttpConnectionHandler(Socket socket, String webRoot, Logger logger) {
 		this.socket = socket;
 		this.webRoot = webRoot;
 		this.logger = logger;
-		try {
-			this.serviceManager = ServiceManager.getInstance("ag.mackenzie.httpd.services");
-		} catch (ServiceException e) {
-			logger.severe("Could not initialize the service manager");
-		}
 	}
 	
 	/* (non-Javadoc)
@@ -111,7 +105,7 @@ public class HttpConnectionHandler extends Thread {
 			//handleHttpGet(request, response);
 			try {
 				
-				Service genericService = serviceManager.resolveService(path);
+				Service genericService = new GenericWebService();
 				logger.info("Thread " + getId() + " Serving " + path);
 				genericService.process(request, response);
 			} catch (ServiceException e) {
@@ -126,7 +120,7 @@ public class HttpConnectionHandler extends Thread {
 	private void handleUnsupported(String method, HTTPResponse response) {
 		HTTPException httpEx = new HTTPException(HTTPResponseCode.UNIMPLEMENTED, method + " is not implemented.");
 		try {
-			response.writeHeaders(httpEx.getResponseCode(), httpEx.toString().length(), "text/html");
+			response.writeHeaders(httpEx.getResponseCode(), httpEx.getMessage().length(), "text/html", false);
 			response.writeString(httpEx.getMessage());
 			socketKiller.cancel();
 		} catch (IOException exception) {

@@ -14,12 +14,14 @@ public class HTTPResponse {
 		this.output = output;
 	}
 	
-	public void writeHeaders(HTTPResponseCode code, long contentLength, String contentType) throws IOException {
-		// I am assuming I always am dealing in HTTP 1.1 and keep-alive...
+	public void writeHeaders(HTTPResponseCode code, long contentLength, String contentType, boolean keepAlive) throws IOException {
 		StringBuilder headers = new StringBuilder();
 		headers.append(code.toString()).append("\r\n");
 		headers.append("Content-Type: " + contentType + "\r\n").append("Content-Length: " + contentLength + "\r\n");
-		headers.append("Connection: keep-alive\r\n").append("Keep-Alive: timeout=20\r\n").append("Server: MattServe2011\r\n\r\n");
+		if (keepAlive) {
+			headers.append("Connection: keep-alive\r\n").append("Keep-Alive: timeout=20\r\n");
+		}
+		headers.append("Server: MattServe2011\r\n\r\n");
 		output.writeBytes(headers.toString());
 	}
 	

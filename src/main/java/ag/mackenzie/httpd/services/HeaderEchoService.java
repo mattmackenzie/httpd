@@ -28,7 +28,7 @@ public class HeaderEchoService implements Service {
 		String toWrite = sb.toString();
 		
 		try {
-			response.writeHeaders(HTTPResponseCode.OK, toWrite.length(), "text/html");
+			response.writeHeaders(HTTPResponseCode.OK, toWrite.length(), "text/html", false);
 			response.writeString(toWrite);
 		} catch (IOException e) {
 			throw new ServiceException(e);
